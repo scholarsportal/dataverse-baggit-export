@@ -87,5 +87,5 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "<<<< RUN SUCCESSFULLY COMPLETED! >>>>"
+echo "<<<< RUN COMPLETED! >>>>"
 exit 0

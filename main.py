@@ -55,15 +55,13 @@ def read_config(config_path):
     try:
         global DATAVERSE_URL_BASE, API_TOKEN, LOG_DIR
         config = configparser.ConfigParser()
-        config.read(config_path)
+        if not config.read(config_path):
+            raise FileNotFoundError(f"Config file '{config_path}' not found or empty.")
         DATAVERSE_URL_BASE = config.get("DATAVERSE", "url_base")
         API_TOKEN = config.get("DATAVERSE", "api_token")
         LOG_DIR = config.get("DATAVERSE", "log_dir")
-    except FileNotFoundError:
-        print(f"Error: Config file '{config_path}' not found.")
-        sys.exit(1)
-    except PermissionError:
-        print(f"Error: Config file '{config_path}' is not accessible due to permission issues.")
+    except Exception as e:
+        print(f"Error: {e}")
         sys.exit(1)
 
 
