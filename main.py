@@ -1,4 +1,5 @@
 import argparse
+import json
 import re
 import os
 import configparser
@@ -66,12 +67,35 @@ def read_config(config_path):
 
 
 def setup_logger(build_number):
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
+    # Create a file handler
     log_file = os.path.join(LOG_DIR, f"{build_number}_baggit.log")
-    logging.basicConfig(filename=log_file, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-    return logging.getLogger()
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Create a console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    return logger
 
 
 def submit_baggit_archive(ids):
+    counters = {
+        'baggit request success': 0,
+        'Unauthorized': 0,
+        'Dataset Not Found': 0,
+        'Requested version not found': 0,
+        'Version already submitted': 0,
+        'connection_errors': 0,
+        'other_errors': 0
+    }
+
     for id in ids:
         parts = id.split()
         if len(parts) != 2:
@@ -89,11 +113,36 @@ def submit_baggit_archive(ids):
             response = requests.post(url, headers=headers)
             if response.status_code == 200:
                 LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
+                counters['baggit request success'] += 1
+            elif response.status_code == 401:
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Unauthorized: Bad API key")
+                counters['Unauthorized'] += 1
+            elif response.status_code == 404:
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: Dataset with Persistent ID {persistent_identifier} not found.")
+                counters['Dataset Not Found'] += 1
+            elif response.status_code == 400:
+                error_message = response.json().get('message', 'Bad Request')
+                if "Requested version not found" in error_message:
+                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: Requested version not found.")
+                    counters['Requested version not found'] += 1
+                elif "Version was already submitted for archiving" in error_message:
+                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: Version was already submitted for archiving.")
+                    counters['Version already submitted'] += 1
+                else:
+                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: {error_message}")
+                    counters['other_errors'] += 1
             else:
-                LOGGER.error(
-                    f"Error submitting version {version} of {persistent_identifier} to archive. Status code: {response.status_code}")
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
+                counters['other_errors'] += 1
+        except requests.ConnectionError:
+            LOGGER.error(f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
+            counters['connection_errors'] += 1
         except requests.RequestException as e:
-            LOGGER.error(f"Error submitting version {version} of {persistent_identifier} to archive: {e}")
+            LOGGER.error(f"Error: version {version} of {persistent_identifier} - {e}")
+            counters['other_errors'] += 1
+
+    return counters
+
 
 
 if __name__ == "__main__":
@@ -121,6 +170,15 @@ if __name__ == "__main__":
         for doi in ids:
             print(doi)
 
-    submit_baggit_archive(ids)
+    counters = submit_baggit_archive(ids)
+    LOGGER.info(counters)
+
+    with open('archive_counters.txt', 'w') as file:
+        non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
+        file.write(', '.join(non_zero_counters))
+
+    if any(key not in ['baggit request success', 'Version already submitted'] and value > 0 for key, value in
+           counters.items()):
+        sys.exit(311)
 
     LOGGER.info("Script completed.")

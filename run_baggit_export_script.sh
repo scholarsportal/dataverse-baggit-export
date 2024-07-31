@@ -7,6 +7,8 @@ UPLOAD_FILEPATH=""
 CONF_FILE=""
 HELP=""
 
+exit_code=0
+
 # Function to display help
 display_help() {
     echo "Usage: $0 [OPTIONS]"
@@ -84,8 +86,8 @@ fi
 
 ./"$VENV_PATH"/bin/python3 -u "$APP_FOLDER"/main.py $CONFIG_OPTION -b "$BUILD" "$UPLOAD_FILEPATH" || exit 1
 if [ $? -ne 0 ]; then
-    exit 1
+    exit_code=1
 fi
 
 echo "<<<< RUN COMPLETED! >>>>"
-exit 0
+exit $exit_code

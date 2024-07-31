@@ -24,9 +24,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# config file
-config/config.ini
-
 # Virtual environments
 venv/
 ENV/
@@ -74,3 +71,5 @@ dmypy.json
 .pyre/
 
 .idea/
+config/config.ini
+archive_counters.txt
