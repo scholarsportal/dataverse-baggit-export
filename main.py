@@ -14,6 +14,7 @@ LOG_DIR = None
 
 LOGGER = None
 
+
 def validate_identifier_version(file_path):
     if not os.path.isfile(file_path):
         print(f"Error: The file path '{file_path}' is not valid or does not exist.")
@@ -51,12 +52,19 @@ def validate_identifier_version(file_path):
 
 
 def read_config(config_path):
-    global DATAVERSE_URL_BASE, API_TOKEN, LOG_DIR
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    DATAVERSE_URL_BASE = config.get("DATAVERSE", "url_base")
-    API_TOKEN = config.get("DATAVERSE", "api_token")
-    LOG_DIR = config.get("DATAVERSE", "log_dir")
+    try:
+        global DATAVERSE_URL_BASE, API_TOKEN, LOG_DIR
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        DATAVERSE_URL_BASE = config.get("DATAVERSE", "url_base")
+        API_TOKEN = config.get("DATAVERSE", "api_token")
+        LOG_DIR = config.get("DATAVERSE", "log_dir")
+    except FileNotFoundError:
+        print(f"Error: Config file '{config_path}' not found.")
+        sys.exit(1)
+    except PermissionError:
+        print(f"Error: Config file '{config_path}' is not accessible due to permission issues.")
+        sys.exit(1)
 
 
 def setup_logger(build_number):
