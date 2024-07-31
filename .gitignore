@@ -24,6 +24,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# config file
+config/config.ini
+
 # Virtual environments
 venv/
 ENV/
