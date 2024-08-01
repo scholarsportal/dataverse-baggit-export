@@ -153,6 +153,7 @@ def submit_bagit_archive(ids):
 
 
 if __name__ == "__main__":
+    exit_code = 0
     parser = argparse.ArgumentParser(description="Validate DOIs in a file.")
     parser.add_argument("file_path", type=str, help="The path to the file to be validated")
     parser.add_argument("--config_path", type=str, default="config/config.ini",
@@ -180,12 +181,15 @@ if __name__ == "__main__":
     counters = submit_bagit_archive(ids)
     LOGGER.info(counters)
 
-    with open('archive_counters.txt', 'w') as file:
-        non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
-        file.write(f"STATUS={', '.join(non_zero_counters)}")
-
     if any(key not in ['total processed', 'success', 'Version already submitted'] and value > 0 for key, value in
            counters.items()):
-        sys.exit(311)
+        exit_code = 211
+    
+    with open('archive_counters.txt', 'w') as file:
+        non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
+        file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
+
+    with open('archive_counters.txt', 'a') as file:
+        file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
 
     LOGGER.info("Script completed.")
