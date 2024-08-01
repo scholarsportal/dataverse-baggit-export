@@ -1,5 +1,4 @@
 import argparse
-import json
 import re
 import os
 import configparser
@@ -87,7 +86,8 @@ def setup_logger(build_number):
 
 def submit_baggit_archive(ids):
     counters = {
-        'baggit request success': 0,
+        'total processed': 0,
+        'success': 0,
         'Unauthorized': 0,
         'Dataset Not Found': 0,
         'Requested version not found': 0,
@@ -97,6 +97,7 @@ def submit_baggit_archive(ids):
     }
 
     for id in ids:
+        counters['total processed'] += 1
         parts = id.split()
         if len(parts) != 2:
             LOGGER.error(f"Invalid ID format: {id}")
@@ -113,36 +114,40 @@ def submit_baggit_archive(ids):
             response = requests.post(url, headers=headers)
             if response.status_code == 200:
                 LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
-                counters['baggit request success'] += 1
+                counters['success'] += 1
             elif response.status_code == 401:
                 LOGGER.error(f"Error: version {version} of {persistent_identifier} - Unauthorized: Bad API key")
                 counters['Unauthorized'] += 1
             elif response.status_code == 404:
-                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: Dataset with Persistent ID {persistent_identifier} not found.")
+                LOGGER.error(
+                    f"Error: version {version} of {persistent_identifier} - Not Found: Dataset with Persistent ID {persistent_identifier} not found.")
                 counters['Dataset Not Found'] += 1
             elif response.status_code == 400:
                 error_message = response.json().get('message', 'Bad Request')
                 if "Requested version not found" in error_message:
-                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: Requested version not found.")
+                    LOGGER.error(
+                        f"Error: version {version} of {persistent_identifier} - Bad Request: Requested version not found.")
                     counters['Requested version not found'] += 1
                 elif "Version was already submitted for archiving" in error_message:
-                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: Version was already submitted for archiving.")
+                    LOGGER.error(
+                        f"Error: version {version} of {persistent_identifier} - Bad Request: Version was already submitted for archiving.")
                     counters['Version already submitted'] += 1
                 else:
                     LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: {error_message}")
                     counters['other_errors'] += 1
             else:
-                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
+                LOGGER.error(
+                    f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
                 counters['other_errors'] += 1
         except requests.ConnectionError:
-            LOGGER.error(f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
+            LOGGER.error(
+                f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
             counters['connection_errors'] += 1
         except requests.RequestException as e:
             LOGGER.error(f"Error: version {version} of {persistent_identifier} - {e}")
             counters['other_errors'] += 1
 
     return counters
-
 
 
 if __name__ == "__main__":
@@ -177,7 +182,7 @@ if __name__ == "__main__":
         non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
         file.write(', '.join(non_zero_counters))
 
-    if any(key not in ['baggit request success', 'Version already submitted'] and value > 0 for key, value in
+    if any(key not in ['total processed', 'success', 'Version already submitted'] and value > 0 for key, value in
            counters.items()):
         sys.exit(311)
 
