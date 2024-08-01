@@ -87,18 +87,18 @@ def setup_logger(build_number):
 
 def submit_bagit_archive(ids):
     counters = {
-        'total processed': 0,
-        'success': 0,
+        'Total Processed': 0,
+        'Success': 0,
         'Unauthorized': 0,
         'Dataset Not Found': 0,
-        'Requested version not found': 0,
-        'Version already submitted': 0,
-        'connection_errors': 0,
-        'other_errors': 0
+        'Requested Version not found': 0,
+        'Version already archived': 0,
+        'Connection Errors': 0,
+        'Other Errors': 0
     }
 
     for id in ids:
-        counters['total processed'] += 1
+        counters['Total Processed'] += 1
         parts = id.split()
         if len(parts) != 2:
             LOGGER.error(f"Invalid ID format: {id}")
@@ -116,7 +116,7 @@ def submit_bagit_archive(ids):
             sleep(0.1)
             if response.status_code == 200:
                 LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
-                counters['success'] += 1
+                counters['Success'] += 1
             elif response.status_code == 401:
                 LOGGER.error(f"Error: version {version} of {persistent_identifier} - Unauthorized: Bad API key")
                 counters['Unauthorized'] += 1
@@ -129,25 +129,25 @@ def submit_bagit_archive(ids):
                 if "Requested version not found" in error_message:
                     LOGGER.error(
                         f"Error: version {version} of {persistent_identifier} - Bad Request: Requested version not found.")
-                    counters['Requested version not found'] += 1
+                    counters['Requested Version not found'] += 1
                 elif "Version was already submitted for archiving" in error_message:
                     LOGGER.error(
                         f"Error: version {version} of {persistent_identifier} - Bad Request: Version was already submitted for archiving.")
-                    counters['Version already submitted'] += 1
+                    counters['Version already archived'] += 1
                 else:
                     LOGGER.error(f"Error: version {version} of {persistent_identifier} - Bad Request: {error_message}")
-                    counters['other_errors'] += 1
+                    counters['Other Errors'] += 1
             else:
                 LOGGER.error(
                     f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
-                counters['other_errors'] += 1
+                counters['Other Errors'] += 1
         except requests.ConnectionError:
             LOGGER.error(
                 f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
-            counters['connection_errors'] += 1
+            counters['Connection Errors'] += 1
         except requests.RequestException as e:
             LOGGER.error(f"Error: version {version} of {persistent_identifier} - {e}")
-            counters['other_errors'] += 1
+            counters['Other Errors'] += 1
 
     return counters
 
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     counters = submit_bagit_archive(ids)
     LOGGER.info(counters)
 
-    if any(key not in ['total processed', 'success', 'Version already submitted'] and value > 0 for key, value in
+    if any(key not in ['Total Processed', 'Success', 'Version already archived'] and value > 0 for key, value in
            counters.items()):
         exit_code = 211
     
