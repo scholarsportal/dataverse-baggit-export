@@ -113,7 +113,7 @@ def submit_bagit_archive(ids):
 
         try:
             response = requests.post(url, headers=headers)
-            sleep(0.1)
+            sleep(0.2)
             if response.status_code == 200:
                 LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
                 counters['Success'] += 1
@@ -152,6 +152,68 @@ def submit_bagit_archive(ids):
     return counters
 
 
+def clear_archive_status(ids):
+    counters = {
+        'Total Processed': 0,
+        'Success': 0,
+        'Unauthorized': 0,
+        'Dataset Not Found': 0,
+        'Requested Version not found': 0,
+        'Connection Errors': 0,
+        'Other Errors': 0
+    }
+
+    for id in ids:
+        counters['Total Processed'] += 1
+        parts = id.split()
+        if len(parts) != 2:
+            LOGGER.error(f"Invalid ID format: {id}")
+            continue
+
+        persistent_identifier, version = parts
+        url = f"{DATAVERSE_URL_BASE}/api/datasets/:persistentId/{version}/archivalStatus?persistentId={persistent_identifier}"
+
+        headers = {
+            "X-Dataverse-key": API_TOKEN
+        }
+
+    try:
+        response = requests.delete(url, headers=headers)
+        response.raise_for_status()
+
+        # Handle specific response codes and messages
+        if response.status_code == 200:
+            LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
+            counters['Success'] += 1
+        elif response.status_code == 401:
+            LOGGER.error(f"Error: version {version} of {persistent_identifier} - Unauthorized: Bad API key")
+            counters['Unauthorized'] += 1
+        elif response.status_code == 404:
+            error_message = response.json().get('message', 'Not Found')
+            if "Dataset with Persistent ID" in error_message:
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                counters['Dataset Not Found'] += 1
+            elif "Dataset version" in error_message:
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                counters['Requested Version not found'] += 1
+            else:
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                counters['Other Errors'] += 1
+        else:
+            LOGGER.error(
+                f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
+            counters['Other Errors'] += 1
+    except requests.ConnectionError:
+        LOGGER.error(
+            f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
+        counters['Connection Errors'] += 1
+    except requests.RequestException as e:
+        LOGGER.error(f"Error: version {version} of {persistent_identifier} - {e}")
+        counters['Other Errors'] += 1
+
+    return counters
+
+
 if __name__ == "__main__":
     exit_code = 0
     parser = argparse.ArgumentParser(description="Validate DOIs in a file.")
@@ -160,6 +222,8 @@ if __name__ == "__main__":
                         help="The path to the config file (default: config/config.ini)")
     parser.add_argument("-b", "--build_number", type=str, default=datetime.now().strftime("%Y-%m-%d-%H%M"),
                         help="Build number (default: current timestamp)")
+    parser.add_argument("-a", "--action", type=str, default="Submit_Archive",
+                        help="Action to perform (default: Submit_Archive)")
     args = parser.parse_args()
 
     read_config(args.config_path)
@@ -181,15 +245,34 @@ if __name__ == "__main__":
     counters = submit_bagit_archive(ids)
     LOGGER.info(counters)
 
-    if any(key not in ['Total Processed', 'Success', 'Version already archived'] and value > 0 for key, value in
-           counters.items()):
-        exit_code = 211
-    
-    with open('archive_counters.txt', 'w') as file:
-        non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
-        file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
+    if args.action == "Submit_Archive":
+        counters = submit_bagit_archive(ids)
+        LOGGER.info(counters)
 
-    with open('archive_counters.txt', 'a') as file:
-        file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
+        if any(key not in ['Total Processed', 'Success', 'Version already archived'] and value > 0 for key, value in
+               counters.items()):
+            exit_code = 211
+
+        with open('archive_counters.txt', 'w') as file:
+            non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
+            file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
+
+        with open('archive_counters.txt', 'a') as file:
+            file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
+    elif args.action == "Clear_Archive":
+        counters = clear_archive_status(ids)
+        LOGGER.info(counters)
+
+        if any(key not in ['Total Processed', 'Success'] and value > 0 for key, value in
+               counters.items()):
+            exit_code = 211
+
+        with open('archive_counters.txt', 'w') as file:
+            non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
+            file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
+
+        with open('archive_counters.txt', 'a') as file:
+            file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
+        LOGGER.info("Archive status cleared.")
 
     LOGGER.info("Script completed.")

@@ -6,6 +6,7 @@ BUILD=""
 UPLOAD_FILEPATH=""
 CONF_FILE=""
 HELP=""
+ACTION=""
 
 exit_code=0
 
@@ -16,6 +17,7 @@ display_help() {
     echo "  -b, --build_number BUILD_NUMBER     Specify the build number"
     echo "  -f, --upload-file UPLOAD_FILEPATH   Specify the upload file path"
     echo "  -c, --config-file CONF_FILE         Specify the config file path (optional)"
+    echo "  -a, --action ACTION                 Specify the action"
     echo "  -h, --help                   Display this help message"
     exit 1
 }
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             CONF_FILE="$2"
             shift 2
             ;;
+        -a|--action)
+            ACTION="$2"
+            shift 2
+            ;;
         -h|--help)
             HELP="true"
             shift
@@ -52,8 +58,8 @@ if [ -n "$HELP" ]; then
 fi
 
 # Check if required parameters are provided
-if [ -z "$BUILD" ] || [ -z "$UPLOAD_FILEPATH" ]; then
-    echo "Error: Both BUILD and UPLOAD_FILEPATH parameters are required"
+if [ -z "$BUILD" ] || [ -z "$UPLOAD_FILEPATH" ] || [ -z "$ACTION" ]; then
+    echo "Error: BUILD, UPLOAD_FILEPATH, and ACTION parameters are required"
     display_help
 fi
 
@@ -70,10 +76,12 @@ APP_FOLDER=$(dirname "$SCRIPT")
 
 VENV_PATH="venv"
 
+echo -e "\n\n"
 echo " ** Starting bagit export script with following parameters **"
 echo "Build Number : $BUILD"
 echo "App Path : $APP_FOLDER"
 echo "Upload file path : $UPLOAD_FILEPATH"
+echo "Action : $ACTION"
 echo -e "\n\n"
 
 cd "$APP_FOLDER" || exit 1
@@ -84,7 +92,7 @@ if [ $? = 1 ]; then
     exit 1
 fi
 
-./"$VENV_PATH"/bin/python3 -u "$APP_FOLDER"/main.py $CONFIG_OPTION -b "$BUILD" "$UPLOAD_FILEPATH" || exit 1
+./"$VENV_PATH"/bin/python3 -u "$APP_FOLDER"/main.py $CONFIG_OPTION -b "$BUILD" -a "$ACTION" "$UPLOAD_FILEPATH" || exit 1
 if [ $? -ne 0 ]; then
     exit_code=1
 fi
