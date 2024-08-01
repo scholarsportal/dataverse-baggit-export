@@ -15,7 +15,7 @@ display_help() {
     echo "Options:"
     echo "  -b, --build_number BUILD_NUMBER     Specify the build number"
     echo "  -f, --upload-file UPLOAD_FILEPATH   Specify the upload file path"
-    echo "  -c, --config-file CONF_FILE       Specify the config file path (optional)"
+    echo "  -c, --config-file CONF_FILE         Specify the config file path (optional)"
     echo "  -h, --help                   Display this help message"
     exit 1
 }
@@ -70,7 +70,7 @@ APP_FOLDER=$(dirname "$SCRIPT")
 
 VENV_PATH="venv"
 
-echo " ** Starting baggit export script with following parameters **"
+echo " ** Starting bagit export script with following parameters **"
 echo "Build Number : $BUILD"
 echo "App Path : $APP_FOLDER"
 echo "Upload file path : $UPLOAD_FILEPATH"

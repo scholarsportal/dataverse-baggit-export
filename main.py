@@ -4,8 +4,9 @@ import os
 import configparser
 import sys
 import logging
-from datetime import datetime
 import requests
+from datetime import datetime
+from time import sleep
 
 # Global variables for configuration
 DATAVERSE_URL_BASE = None
@@ -71,7 +72,7 @@ def setup_logger(build_number):
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
     # Create a file handler
-    log_file = os.path.join(LOG_DIR, f"{build_number}_baggit.log")
+    log_file = os.path.join(LOG_DIR, f"{build_number}_bagit.log")
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -84,7 +85,7 @@ def setup_logger(build_number):
     return logger
 
 
-def submit_baggit_archive(ids):
+def submit_bagit_archive(ids):
     counters = {
         'total processed': 0,
         'success': 0,
@@ -112,6 +113,7 @@ def submit_baggit_archive(ids):
 
         try:
             response = requests.post(url, headers=headers)
+            sleep(0.1)
             if response.status_code == 200:
                 LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
                 counters['success'] += 1
@@ -175,7 +177,7 @@ if __name__ == "__main__":
         for doi in ids:
             print(doi)
 
-    counters = submit_baggit_archive(ids)
+    counters = submit_bagit_archive(ids)
     LOGGER.info(counters)
 
     with open('archive_counters.txt', 'w') as file:
