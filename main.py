@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     with open('archive_counters.txt', 'w') as file:
         non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
-        file.write(', '.join(non_zero_counters))
+        file.write(f"STATUS={', '.join(non_zero_counters)}")
 
     if any(key not in ['total processed', 'success', 'Version already submitted'] and value > 0 for key, value in
            counters.items()):
