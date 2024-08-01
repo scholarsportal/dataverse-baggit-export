@@ -18,8 +18,8 @@ LOGGER = None
 
 def validate_identifier_version(file_path):
     if not os.path.isfile(file_path):
-        print(f"Error: The file path '{file_path}' is not valid or does not exist.")
-        return None
+        LOGGER.error(f"Error: The file path '{file_path}' is not valid or does not exist.")
+        sys.exit(1)
 
     doi_pattern = re.compile(r'^(doi:\d+\.\d+/[a-zA-Z0-9]+/[a-zA-Z0-9]+?,?|hdl:\d+/\d+),(\d+),(\d+)$', re.IGNORECASE)
 
@@ -43,11 +43,10 @@ def validate_identifier_version(file_path):
                 invalid_dois.append(line)
 
     if invalid_dois:
-        print("Invalid DOIs:")
         for doi in invalid_dois:
-            print(doi)
-        print("\nPlease fix the invalid DOIs and re-run the program.")
-        return None
+            LOGGER.error(f"Invalid DOI: {doi}")
+        LOGGER.error(f"Please fix the invalid DOIs and re-run the program.")
+        sys.exit(1)
 
     return valid_dois
 
@@ -226,19 +225,19 @@ if __name__ == "__main__":
 
     read_config(args.config_path)
 
-    if not API_TOKEN:
-        print("Error: The 'api_token' value in the config file is empty. Please provide a valid API token.")
-        sys.exit(1)
-
     LOGGER = setup_logger(args.build_number)
     LOGGER.info("Script started.")
 
+    if not API_TOKEN:
+        LOGGER.error("Error: The 'api_token' value in the config file is empty. Please provide a valid API token.")
+        sys.exit(1)
+
+    LOGGER.info("Validating CSV file for valid DOIs and version formats.")
     ids = validate_identifier_version(args.file_path)
 
     if ids:
-        print("Valid DOIs:")
         for doi in ids:
-            print(doi)
+            LOGGER.info(f"Valid DOI: {doi}")
 
     if args.action == "Submit_Archive":
         counters = submit_bagit_archive(ids)
@@ -247,13 +246,7 @@ if __name__ == "__main__":
         if any(key not in ['Total Processed', 'Success', 'Version already archived'] and value > 0 for key, value in
                counters.items()):
             exit_code = 211
-
-        with open('archive_counters.txt', 'w') as file:
-            non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
-            file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
-
-        with open('archive_counters.txt', 'a') as file:
-            file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
+        non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
     elif args.action == "Clear_Archive":
         counters = clear_archive_status(ids)
         LOGGER.info(counters)
@@ -261,13 +254,12 @@ if __name__ == "__main__":
         if any(key not in ['Total Processed', 'Success'] and value > 0 for key, value in
                counters.items()):
             exit_code = 211
+        non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
 
-        with open('archive_counters.txt', 'w') as file:
-            non_zero_counters = [f"{key}: {value}" for key, value in counters.items() if value > 0]
-            file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
+    with open('archive_counters.txt', 'w') as file:
+        file.write(f"COUNTER_STATUS={', '.join(non_zero_counters)}\n")
 
-        with open('archive_counters.txt', 'a') as file:
-            file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
-        LOGGER.info("Archive status cleared.")
+    with open('archive_counters.txt', 'a') as file:
+        file.write(f"PYTHON_EXIT_CODE={exit_code}\n")
 
     LOGGER.info("Script completed.")
