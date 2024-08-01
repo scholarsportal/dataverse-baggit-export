@@ -76,7 +76,7 @@ APP_FOLDER=$(dirname "$SCRIPT")
 
 VENV_PATH="venv"
 
-echo -e "\n\n"
+echo -e "\n"
 echo " ** Starting bagit export script with following parameters **"
 echo "Build Number : $BUILD"
 echo "App Path : $APP_FOLDER"
@@ -92,9 +92,12 @@ if [ $? = 1 ]; then
     exit 1
 fi
 
+echo -e "\n\n"
+
 ./"$VENV_PATH"/bin/python3 -u "$APP_FOLDER"/main.py $CONFIG_OPTION -b "$BUILD" -a "$ACTION" "$UPLOAD_FILEPATH" || exit 1
 if [ $? -ne 0 ]; then
     exit_code=1
 fi
 
+echo -e "\n\n"
 echo "<<<< RUN COMPLETED! >>>>"
