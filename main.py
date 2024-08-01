@@ -177,39 +177,37 @@ def clear_archive_status(ids):
             "X-Dataverse-key": API_TOKEN
         }
 
-    try:
-        response = requests.delete(url, headers=headers)
-        response.raise_for_status()
-
-        # Handle specific response codes and messages
-        if response.status_code == 200:
-            LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
-            counters['Success'] += 1
-        elif response.status_code == 401:
-            LOGGER.error(f"Error: version {version} of {persistent_identifier} - Unauthorized: Bad API key")
-            counters['Unauthorized'] += 1
-        elif response.status_code == 404:
-            error_message = response.json().get('message', 'Not Found')
-            if "Dataset with Persistent ID" in error_message:
-                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
-                counters['Dataset Not Found'] += 1
-            elif "Dataset version" in error_message:
-                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
-                counters['Requested Version not found'] += 1
+        try:
+            response = requests.delete(url, headers=headers)
+            sleep(0.2)
+            if response.status_code == 200:
+                LOGGER.info(f"Submitted version {version} of {persistent_identifier} to archive.")
+                counters['Success'] += 1
+            elif response.status_code == 401:
+                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Unauthorized: Bad API key")
+                counters['Unauthorized'] += 1
+            elif response.status_code == 404:
+                error_message = response.json().get('message', 'Not Found')
+                if "Dataset with Persistent ID" in error_message:
+                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                    counters['Dataset Not Found'] += 1
+                elif "Dataset version" in error_message:
+                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                    counters['Requested Version not found'] += 1
+                else:
+                    LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                    counters['Other Errors'] += 1
             else:
-                LOGGER.error(f"Error: version {version} of {persistent_identifier} - Not Found: {error_message}")
+                LOGGER.error(
+                    f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
                 counters['Other Errors'] += 1
-        else:
+        except requests.ConnectionError:
             LOGGER.error(
-                f"Error: version {version} of {persistent_identifier} - Status code: {response.status_code}")
+                f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
+            counters['Connection Errors'] += 1
+        except requests.RequestException as e:
+            LOGGER.error(f"Error: version {version} of {persistent_identifier} - {e}")
             counters['Other Errors'] += 1
-    except requests.ConnectionError:
-        LOGGER.error(
-            f"Error: version {version} of {persistent_identifier} - Connection refused: Failed to connect to server")
-        counters['Connection Errors'] += 1
-    except requests.RequestException as e:
-        LOGGER.error(f"Error: version {version} of {persistent_identifier} - {e}")
-        counters['Other Errors'] += 1
 
     return counters
 
@@ -241,9 +239,6 @@ if __name__ == "__main__":
         print("Valid DOIs:")
         for doi in ids:
             print(doi)
-
-    counters = submit_bagit_archive(ids)
-    LOGGER.info(counters)
 
     if args.action == "Submit_Archive":
         counters = submit_bagit_archive(ids)
